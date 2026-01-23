@@ -1,0 +1,47 @@
+name: Auto upload plugins to MinIO
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: Linux
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install awscli
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+
+      - name: Upload plugins to MinIO
+        run: |
+          for dir in */ ; do
+            dir="${dir%/}"
+
+            if [[ "$dir" == .* ]]; then
+              echo "Skipping hidden directory: $dir"
+              continue
+            fi
+
+            echo "Processing directory: $dir"
+
+            (
+              cd "$dir"
+              zip -r "../${dir}.kbplugin" .
+            )
+
+            aws s3 cp \
+              "${dir}.kbplugin" \
+              "s3://${{ secrets.MINIO_BUCKET }}/plugins/${dir}.kbplugin" \
+              --endpoint-url "${{ secrets.MINIO_ENDPOINT }}"
+          done
