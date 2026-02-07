@@ -1,6 +1,8 @@
+require "common/sdk"
+
 Admins = {
-    1008821068006, -- DennisDice
-    1008879038260
+    1008821068006, -- "DennisDice"
+    1008879038260  -- "Iaptop"
 }
 
 EventManager.Listen("ServerPlayer:SendMessage", function(player, message)

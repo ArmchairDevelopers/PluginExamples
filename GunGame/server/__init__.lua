@@ -1,4 +1,4 @@
-local debugMode = os.getenv("KYBER_DEV_MODE") ~= nil
+local debugMode = os.getenv("KYBER_DEV_MODE") ~= nil or true -- :)
 local DebugLog = function(s)
     if (debugMode) or ((os.getenv("KYBER_LOG_LEVEL") or ""):lower() == "debug") then
         print("[Debug] " .. s)
@@ -15,18 +15,19 @@ local VanillaGunList = require "vanilla_gun_list"
 local BFPlusGunList = require "bfplus_gun_list"
 local AllGuns = {}
 
-local GunListEnvName <const> = "KYBER_PLUGIN_SETTING_GUNLIST"                     -- Base64 -> path|path2|path3
-local GunCountEnvName <const> = "KYBER_PLUGIN_SETTING_GUNCOUNT"                   -- Int32
+local GunListEnvName <const> = "KYBER_PLUGIN_SETTING_GUNLIST" -- Base64 -> path|path2|path3
+local GunCountEnvName <const> = "KYBER_PLUGIN_SETTING_GUNCOUNT" -- Int32
 local UseBFPlusGunListEnvName <const> = "KYBER_PLUGIN_SETTING_USE_BFPLUS_GUNLIST" -- Boolean
+local DisableInputBlockEnvName <const> = "KYBER_PLUGIN_SETTING_DISABLE_INPUT_BLOCK" -- Boolean
 local BaseGunCount <const> = 7
 local MeleeGun <const> = "Gameplay/Equipment/Pistols/PingLauncher/U_DefaultAbility_Assault_ScanDart"
 
 local UseBFPlusGunList = os.getenv(UseBFPlusGunListEnvName) ~= nil
-AllGuns = VanillaGunList
 if UseBFPlusGunList then
-    table.insert(AllGuns, BFPlusGunList)
+    AllGuns = BFPlusGunList
+else
+    AllGuns = VanillaGunList
 end
-
 
 local function getDistinctValues(inputTable)
     local distinctTable = {}
@@ -43,10 +44,14 @@ local function getDistinctValues(inputTable)
 end
 
 AllGuns = getDistinctValues(AllGuns)
+GunList = {}
+
+if os.getenv(DisableInputBlockEnvName) == nil then
+    require "input_blocks"
+end
 
 local Broadcast = function(str) Console.Execute("Kyber.Broadcast " .. str) end
 
-GunList = {}
 
 GunGameProgram = {
     CompletedSanityCheck = false,
@@ -76,12 +81,10 @@ GunGameProgram = {
             killer:GiveBattlepoints(-100)
         end
 
-        if not string.find(killerWeapon, "U_Melee") then
-            return
+        if string.find(killerWeapon, "U_Melee") then
+            self:DecrementPlayerWeapon(victim)
+            self:DecrementPlayerWeapon(victim)
         end
-
-        self:DecrementPlayerWeapon(victim)
-        self:DecrementPlayerWeapon(victim)
     end,
 
     OnSpawned = function(self, player)
@@ -101,16 +104,17 @@ GunGameProgram = {
         end
 
         syncedGame.enableFriendlyFire = true
+        player:SendSyncedSettings()
     end,
-
+    
     -- Logic
 
     IncrementPlayerWeapon = function(self, player)
         self:EnsurePlayerInitialized(player)
-
+        
         local completedGunList = self.Database[player.playerId] >= self.GunCount
         if (self.Database[player.playerId] == self.GunCount - 1) and (not table.contains(self.HasBeenAnnouncedLastWeapon, player.playerId)) then
-            Broadcast("**[GUNGAME]** **" .. player.name .. "** is on the last gun!")
+            Broadcast("**[BLASTER MASTER]** **" .. player.name .. "** is on the last gun!")
             table.insert(self.HasBeenAnnouncedLastWeapon, player.playerId)
         end
 
@@ -127,7 +131,7 @@ GunGameProgram = {
                 Console.Execute("endofround")
             end, 5)
         end
-
+        
         self.Database[player.playerId] = (self.Database[player.playerId] % self.GunCount) + 1
         self:UpdatePlayerWeapon(player)
     end,
@@ -210,7 +214,7 @@ GunGameProgram = {
                 t[i], t[j] = t[j], t[i]
             end
         end
-
+        
         local function getSubArray(arr, startIndex, endIndex)
             local subArray = {}
 
@@ -251,7 +255,7 @@ GunGameProgram = {
             DebugLog("ERROR: Tried setting player " .. player.name .. " with database value " .. self.Database[player.playerId] .. " to nil gun")
             return
         end
-
+        
         player:SetWeapon(gun)
     end,
 
@@ -312,6 +316,7 @@ EventManager.Listen("ServerPlayer:Joined", function(player)
     end
 
     syncedGame.enableFriendlyFire = true
+    player:SendSyncedSettings()
 
     SetTimeout(function()
         player:SetTeam(GunGameProgram.Anchor)
@@ -320,7 +325,11 @@ end)
 
 EventManager.Listen("Level:Loaded", function(level, mode)
     CompleteReset()
-    
+
+    SetTimeout(function()
+        Broadcast("**[BLASTER MASTER]** Welcome to Blaster Master! Gun list count for this round: " ..
+        GunGameProgram.GunCount)
+    end, 5)
 
     local autoPlayers = Console.GetSettings("AutoPlayers")
     if autoPlayers == nil then
@@ -328,12 +337,13 @@ EventManager.Listen("Level:Loaded", function(level, mode)
     end
 
     SetTimeout(function()
-        Broadcast("**[GUNGAME]** Welcome to GunGame! Gun list count for this round: " .. GunGameProgram.GunCount)
         Console.Execute("startgame")
-
         -- just incase
         SetTimeout(function()
             Console.Execute("startgame")
+            SetTimeout(function()
+                Console.Execute("startgame")
+            end, 10)
         end, 10)
     end, 10)
 end)
@@ -351,12 +361,20 @@ EventManager.Listen("ResourceManager:PartitionLoaded", function(instanceName, in
         if object.defaultValue == false and object.realm == Realm.Realm_Server then
             object.realm = Realm.Realm_None
             object.defaultValue = true
-
+            
             DebugLog("Patched close spawns at the start of rounds")
         end
 
         ::continue::
     end
+end)
+
+EventManager.Listen("ResourceManager:PartitionLoaded", function(instanceName, inst)
+    if not inst.typeInfo:isKindOf("PlayerAbilityAsset") then
+        return
+    end
+
+    inst.ignoreNetworkingErrors = true
 end)
 
 if debugMode then
@@ -371,6 +389,7 @@ if not debugMode then
 end
 
 EventManager.Listen("ServerPlayer:SendMessage", function(player, message)
+    if not table.contains(Admins, player.playerId) then return end
     if message:len() < 2 then return end
     local messageSplit = string.split(message)
 
@@ -401,6 +420,55 @@ EventManager.Listen("ServerPlayer:SendMessage", function(player, message)
         runTest()
     elseif command == "inc" then
         GunGameProgram:IncrementPlayerWeapon(player)
+
+    elseif command == "setscore" then
+        if #messageSplit < 2 then return end
+        player:SetScore(tonumber(messageSplit[2]))
+
+    elseif command == "setkills" then
+        if #messageSplit < 2 then return end
+        player:SetKills(tonumber(messageSplit[2]))
+
+    elseif command == "setassists" then
+        if #messageSplit < 2 then return end
+        player:SetAssists(tonumber(messageSplit[2]))
+
+    elseif command == "setdeaths" then
+        if #messageSplit < 2 then return end
+        player:SetDeaths(tonumber(messageSplit[2]))
+
+    elseif command == "setinvisible" then
+        if #messageSplit < 2 then return end
+        player:SetInvisible(tonumber(messageSplit[2]) > 0)
+
+    elseif command == "sethealth" then
+        if #messageSplit < 2 then return end
+        player:SetHealth(tonumber(messageSplit[2]))
+
+    elseif command == "setmaxhealth" then
+        if #messageSplit < 2 then return end
+        player:SetMaxHealth(tonumber(messageSplit[2]))
+
+    elseif command == "setammo" then
+        if #messageSplit < 2 then return end
+        player:SetAmmo(tonumber(messageSplit[2]))
+
+    elseif command == "setability" then
+        if #messageSplit < 2 then return end
+        player:SetAbility(tonumber(messageSplit[2]))
+
+    elseif command == "sudo" then
+        if #messageSplit < 3 then return end
+        local playerName = messageSplit[2]
+        local target = PlayerManager.GetPlayer(playerName)
+        if target == nil then DebugLog("SUDO FAILED TO FIND TARGET") return end
+        player:ForceSendChatMessage(table.concat(messageSplit, " ", 3))
+        
+    elseif command == "testanakin" then
+        player:SetCustomizationAsset("Gameplay/Kits/Hero/DarthVader/Kit_Hero_DarthVader")
+
+    else 
+        DebugLog("Invalid command ran: " .. command)
     end
 end)
 
