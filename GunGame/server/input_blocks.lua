@@ -22,7 +22,8 @@ local BlockLeftList <const> = {
 }
 
 local BlockRightList <const> = {
-    "Kit_Special_CloneCommando"
+    "Kit_Special_CloneCommando",
+    "Kit_Special_JumpCop"
 }
 
 --#endregion
