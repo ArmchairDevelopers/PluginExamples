@@ -47,7 +47,6 @@ GunList = {
     "Gameplay/Equipment/LongRange/NT242/U_LongRange_NT242",
     "Gameplay/Equipment/LongRange/T21B/U_LongRange_T21B",
     "Gameplay/Equipment/LongRange/Valken38x/U_LongRange_Valken38x",
-    "Gameplay/Kits/Specials/EwokRebel/U_LongRange_Bow",
     "Gameplay/Kits/Specials/BermudaCop/Unlocks/U_BermudaCop_BermudaRifle",
     "Gameplay/Kits/Specials/ISBAgent/Unlocks/U_ISBAgent_DualRK3",
     "Gameplay/Equipment/Heavy/FWMB10/U_HeavyBlaster_FWMB10Mod",
