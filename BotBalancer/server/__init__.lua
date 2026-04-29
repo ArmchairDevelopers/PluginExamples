@@ -9,7 +9,7 @@ local updateIntervalSeconds <const> = 5
 --
 -- We don't want to add too many bots, because a game completely full of bots is not fun,
 -- and we want to leave room for human players to join.
-local desiredGameDensity <const> = 0.95
+local desiredGameDensity <const> = 0.9
 
 -- Wether to tie the player balancer routine to if the current gamemode
 -- is among the allowed gamemodes for the plugin's functionality. 
