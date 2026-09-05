@@ -1,3 +1,6 @@
+require "agones"
+require "metrics"
+
 local requestRouter = require "server_router"
 
 requestRouter:handle("GET", "/broadcast", function(req)

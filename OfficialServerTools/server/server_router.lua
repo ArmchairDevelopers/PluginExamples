@@ -1,4 +1,4 @@
-local Http = require "http_server"
+local Http = require "common/http_server"
 local HttpServer = Http.Server
 local HttpRouter = Http.Router
 

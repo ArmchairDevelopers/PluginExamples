@@ -1,4 +1,4 @@
-local SetTimeout = require "common/timer".SetTimeout
+require "common/sdk"
 
 local requestRouter = require "server_router"
 
