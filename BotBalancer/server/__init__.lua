@@ -204,6 +204,9 @@ EventManager.Listen("Level:Loaded", function(levelName, gameModeId)
 
     -- Enable built-in team shuffling
     kyberSettings.enableShuffleTeams = true
+
+    -- Enable afk kick
+    wsSettings.noInteractivityTimeoutTime = 60 * 5
 end)
 
 -- Finds the best fit team by looking at both team player counts
@@ -239,7 +242,6 @@ end
 
 -- This event is triggered when a player joins the server.
 -- We will determine the best team to set them to here
-EventManager.Listen("Server:PlayerJoined", onPlayerJoin)
 EventManager.Listen("ServerPlayer:Joined", onPlayerJoin)
 
 -- Deprecated: Team shuffling
